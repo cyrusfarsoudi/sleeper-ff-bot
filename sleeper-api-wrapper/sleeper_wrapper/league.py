@@ -10,6 +10,9 @@ class League(BaseApi):
 	def get_league(self):
 		return self._league
 
+	def get_league_scoring_settings(self):
+		return self._league["scoring_settings"]
+
 	def get_rosters(self):
 		return self._call("{}/{}".format(self._base_url,"rosters"))
 
@@ -129,12 +132,13 @@ class League(BaseApi):
 	def get_team_score(self,starters, score_type, week, projected=False):
 		total_score = 0.0
 		stats = Stats()
+		scoring_settings = self.get_league_scoring_settings()
 		week_stats = stats.get_week_projections("regular", 2022, week) if projected else \
 		             stats.get_week_stats("regular", 2022, week)
 		for starter in starters:
-			if stats.get_player_week_stats(week_stats, starter) is not None:
+			if stats.get_player_week_stats(week_stats, starter, scoring_settings) is not None:
 				try:
-					total_score += stats.get_player_week_stats(week_stats, starter)[score_type]
+					total_score += stats.get_player_week_stats(week_stats, starter, scoring_settings)[score_type]
 				except KeyError as e:
 					total_score += 0
 

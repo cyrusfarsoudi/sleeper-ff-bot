@@ -1,5 +1,4 @@
 from sleeper_wrapper.base_api import BaseApi
-from sleeper_wrapper.socal858_scoring_settings import SCORING_SETTINGS
 
 class Stats(BaseApi):
 	def __init__(self):
@@ -19,9 +18,9 @@ class Stats(BaseApi):
 	def get_week_projections(self, season_type, season, week):
 		return self._call("{}/{}/{}/{}".format(self._projections_base_url, season_type, season, week))
 
-	def get_player_week_stats(self, stats, player_id):
+	def get_player_week_stats(self, stats, player_id, settings):
 		try:
-			return self.get_socal858_score(stats, player_id)[player_id]
+			return self.calculate_score_with_league_settings(stats, player_id, settings)[player_id]
 		except Exception as e:
 			return None
 
@@ -52,8 +51,8 @@ class Stats(BaseApi):
 
 		return result_dict
 
-	def get_socal858_score(self, stats, player_id):
-		# calculate's a player's score with SoCal858's scoring system
+	def calculate_score_with_league_settings(self, stats, player_id, settings):
+		# uses a league's custom scoring settings to calculate a given player's score
 
 		if player_id not in stats:
 			return stats
@@ -61,17 +60,9 @@ class Stats(BaseApi):
 		point_total = 0
 
 		for stat, value in stats[player_id].items():
-			if stat in SCORING_SETTINGS:
-				if stat == "pts_allow":
-					point_total += self.get_points_from_pts_allow(SCORING_SETTINGS["pts_allow"], value)
-				else:
-					point_total += (value * (SCORING_SETTINGS[stat]))
+			if stat in settings:
+				point_total += (value * (settings[stat]))
 
-		stats[player_id]["pts_socal"] = point_total
+		stats[player_id]["pts_custom"] = point_total
 
 		return stats
-
-	def get_points_from_pts_allow(self, scoring_settings, pts_allowed):
-		for interval_end, pts_earned in scoring_settings.items():
-			if pts_allowed <= interval_end:
-				return pts_earned
