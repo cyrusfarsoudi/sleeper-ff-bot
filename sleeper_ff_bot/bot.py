@@ -3,8 +3,7 @@ import time
 import os
 import pendulum
 from discord import Discord
-from sleeper_wrapper import League, Stats, Players
-from constants import STARTING_MONTH, STARTING_YEAR, STARTING_DAY, START_DATE_STRING
+from sleeper_wrapper import League, Stats, Players, State
 
 """
 These are all of the utility functions.
@@ -22,7 +21,7 @@ def get_league_scoreboards(league_id, week):
     matchups = league.get_matchups(week)
     users = league.get_users()
     rosters = league.get_rosters()
-    scoreboards = league.get_scoreboards(rosters, matchups, users, "pts_socal", week)
+    scoreboards = league.get_scoreboards(rosters, matchups, users, "pts_custom", week)
     return scoreboards
 
 
@@ -88,7 +87,8 @@ def make_roster_dict(starters_list, bench_list):
     week = get_current_week()
     players = Players().get_all_players()
     stats = Stats()
-    week_stats = stats.get_week_stats("regular", STARTING_YEAR, week)
+    state = State()
+    week_stats = stats.get_week_stats("regular", state.get_season_start_year(), week)
 
     roster_dict = {"starters": {}, "bench": {}}
     for player_id in starters_list:
@@ -96,7 +96,7 @@ def make_roster_dict(starters_list, bench_list):
         player_position = player["position"]
         player_name = player["first_name"] + " " + player["last_name"]
         try:
-            player_std_score = week_stats[player_id]["pts_std"]
+            player_std_score = week_stats[player_id]["pts_custom"]
         except KeyError:
             player_std_score = None
 
@@ -112,7 +112,7 @@ def make_roster_dict(starters_list, bench_list):
         player_name = player["first_name"] + " " + player["last_name"]
 
         try:
-            player_std_score = week_stats[player_id]["pts_std"]
+            player_std_score = week_stats[player_id]["pts_custom"]
         except KeyError:
             player_std_score = None
 
@@ -180,12 +180,14 @@ def get_bench_points(league_id):
     week = get_current_week()
 
     league = League(league_id)
+    scoring_settings = league.get_league_scoring_settings()
     users = league.get_users()
     matchups = league.get_matchups(week)
 
     stats = Stats()
+    state = State()
     # WEEK STATS NEED TO BE FIXED
-    week_stats = stats.get_week_stats("regular", STARTING_YEAR, week)
+    week_stats = stats.get_week_stats("regular", state.get_season_start_year(), week)
 
     owner_id_to_team_dict = map_users_to_team_name(users)
     roster_id_to_owner_id_dict = map_roster_id_to_owner_id(league_id)
@@ -199,7 +201,7 @@ def get_bench_points(league_id):
         socal_points = 0
         for player in bench:
             try:
-                socal_points += stats.get_player_week_stats(week_stats, player)["pts_socal"]
+                socal_points += stats.get_player_week_stats(week_stats, player, scoring_settings)["pts_custom"]
             except:
                 continue
         owner_id = roster_id_to_owner_id_dict[matchup["roster_id"]]
@@ -225,8 +227,9 @@ def get_negative_starters(league_id):
     matchups = league.get_matchups(week)
 
     stats = Stats()
+    state = State()
     # WEEK STATS NEED TO BE FIXED
-    week_stats = stats.get_week_stats("regular", STARTING_YEAR, week)
+    week_stats = stats.get_week_stats("regular", state.get_season_start_year(), week)
 
     players = Players()
     players_dict = players.get_all_players()
@@ -240,7 +243,7 @@ def get_negative_starters(league_id):
         negative_players = []
         for starter_id in starters:
             try:
-                std_pts = week_stats[str(starter_id)]["pts_socal"]
+                std_pts = week_stats[str(starter_id)]["pts_custom"]
             except KeyError:
                 std_pts = 0
             if std_pts < 0:
@@ -275,7 +278,8 @@ def get_current_week():
     :return: Int current week
     """
     today = pendulum.today()
-    starting_week = pendulum.datetime(STARTING_YEAR, STARTING_MONTH, STARTING_DAY)
+    state = State()
+    starting_week = pendulum.datetime(state.get_season_start_year(), state.get_season_start_month(), state.get_season_start_day())
     week = today.diff(starting_week).in_weeks()
     return week + 1
 
@@ -290,8 +294,9 @@ def get_welcome_string():
     Creates and returns the welcome message
     :return: String welcome message
     """
+    state = State()
     welcome_message = "👋 Hello, I am Sleeper Bot! \n\nThe bot schedule for the {} ff season can be found here: ".format(
-        STARTING_YEAR)
+        state.get_season_start_year())
     welcome_message += "https://github.com/cyrusfarsoudi/sleeper-ff-bot#current-schedule \n\n"
     welcome_message += "Any feature requests, contributions, or issues for the bot can be added here: " \
                        "https://github.com/cyrusfarsoudi/sleeper-ff-bot \n\n"
@@ -495,7 +500,8 @@ if __name__ == "__main__":
     except:
         close_num = 20
 
-    starting_date = pendulum.datetime(STARTING_YEAR, STARTING_MONTH, STARTING_DAY)
+    state = State()
+    starting_date = pendulum.datetime(state.get_season_start_year(), state.get_season_start_month(), state.get_season_start_day())
 
 
     webhook = os.environ["DISCORD_WEBHOOK"]
@@ -503,16 +509,16 @@ if __name__ == "__main__":
 
     bot.send(get_welcome_string)  # inital message to send
 
-    schedule.every().thursday.at("19:00").do(bot.send, get_matchups_string,
+    schedule.every().thursday.at("16:00").do(bot.send, get_matchups_string,
                                              league_id)  # Matchups Thursday at 4:00 pm PT
-    schedule.every().friday.at("12:00").do(bot.send, get_scores_string, league_id)  # Scores Friday at 12 pm PT
-    schedule.every().sunday.at("23:00").do(bot.send, get_close_games_string, league_id,
-                                           int(close_num))  # Close games Sunday on 7:00 pm PT
-    schedule.every().monday.at("12:00").do(bot.send, get_scores_string, league_id)  # Scores Monday at 12 pm PT
-    schedule.every().tuesday.at("15:00").do(bot.send, get_standings_string,
-                                            league_id)  # Standings Tuesday at 11:00 am PT
-    schedule.every().tuesday.at("15:01").do(bot.send, get_best_and_worst_string,
-                                            league_id)  # Standings Tuesday at 11:01 am PT
+    schedule.every().friday.at("09:00").do(bot.send, get_scores_string, league_id)  # Scores Friday at 9 am PT
+    schedule.every().sunday.at("16:00").do(bot.send, get_close_games_string, league_id,
+                                           int(close_num))  # Close games Sunday on 4:00 pm PT
+    schedule.every().monday.at("09:00").do(bot.send, get_scores_string, league_id)  # Scores Monday at 9 am PT
+    schedule.every().tuesday.at("08:00").do(bot.send, get_standings_string,
+                                            league_id)  # Standings Tuesday at 8:00 am PT
+    schedule.every().tuesday.at("08:01").do(bot.send, get_best_and_worst_string,
+                                            league_id)  # Standings Tuesday at 8:01 am PT
 
     while True:
         if starting_date <= pendulum.today():

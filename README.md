@@ -1,5 +1,4 @@
-![Version](https://img.shields.io/badge/Version-v0.0.3-blue)
-[![Build Status](https://travis-ci.org/SwapnikKatkoori/sleeper-ff-bot.svg?branch=master)](https://travis-ci.org/SwapnikKatkoori/sleeper-ff-bot)
+![Version](https://img.shields.io/badge/Version-v0.0.1-blue)
 ![Version](https://img.shields.io/badge/license-MIT-pink)
 ![GitHub issues](https://img.shields.io/github/issues/cyrusfarsoudi/sleeper-ff-bot)
 
