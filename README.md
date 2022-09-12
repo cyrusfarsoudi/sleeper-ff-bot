@@ -55,7 +55,7 @@ A Discord Bot for Sleeper fantasy leagues. It sends messages on the schedule bel
 
 - Step 4:
 
-For Discord fill out the following (The BOT_TYPE needs to be discord):
+For Discord fill out the following:
 
 <img src="/Media/discord/enviornment_setup.jpeg" width="400"/>
 

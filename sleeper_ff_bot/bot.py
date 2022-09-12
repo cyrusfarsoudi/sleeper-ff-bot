@@ -563,7 +563,7 @@ if __name__ == "__main__":
     players = Players()
     players_dict = players.get_all_players()
 
-    bot.send(get_welcome_string)  # inital message to send
+    # bot.send(get_welcome_string)  # inital message to send
     schedule.every(1).minute.do(process_transactions, league_id, players_dict, bot)
     schedule.every().thursday.at("19:00").do(bot.send, get_matchups_string,
                                              league_id)  # Matchups Thursday at 4:00 pm PT
