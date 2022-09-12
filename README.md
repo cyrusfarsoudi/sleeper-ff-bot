@@ -4,11 +4,9 @@
 
 This project was forked from https://github.com/SwapnikKatkoori/sleeper-ff-bot. Updates include:
 - Removed non-Discord functionality (GroupMe and Slack)
-- Fixed dates to work for 2022 season
-- Scoring settings reflect SoCal858 settings
-  - 6pt passing td's
-  - 2pt 40yd td bonus
-  - 3pt per fgm, .1pt per fgm yds over 30
+- Now pulling season start date from API
+- Now pulling scoring settings from API
+- Added transaction support (currently not supporting trades)
 - Updated Discord message contents and formatting
 - Moved sleeper-api-wrapper package into this repository
 
