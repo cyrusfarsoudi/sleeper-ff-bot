@@ -8,7 +8,7 @@ class BaseApi():
 		try:
 			result_json_string.raise_for_status()
 		except requests.exceptions.HTTPError as e:
-			return e
+			return []
 			#return SleeperWrapperException("Empty value returned")
 
 		result = result_json_string.json()
