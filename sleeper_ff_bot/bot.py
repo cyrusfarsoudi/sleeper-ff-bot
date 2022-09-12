@@ -1,5 +1,6 @@
 import schedule
 import time
+import datetime as dt
 import os
 import pendulum
 from discord import Discord
@@ -485,6 +486,58 @@ def get_bench_beats_starters_string(league_id):
         all_players = matchup["players"]
         bench = set(all_players) - set(starters)
 
+def process_transactions(league_id, players, bot, time_delta=60):
+    week = get_current_week()
+    league = League(league_id)
+    transactions = league.get_transactions(week)
+    users = league.get_users()
+
+    owner_id_to_team_dict = map_users_to_team_name(users)
+    roster_id_to_owner_id_dict = map_roster_id_to_owner_id(league_id)
+
+    for t in transactions:
+        transaction_time = t["created"] // 1000
+        if dt.datetime.now().timestamp() - transaction_time > time_delta:
+            continue
+
+        # need to wait to have trade data to develop against
+        if t["type"] == "trade":
+            continue
+
+        added_player_names = []
+        dropped_player_names = []
+        team_name = ""
+
+        roster_id = t["roster_ids"][0]
+        owner_id = roster_id_to_owner_id_dict[roster_id]
+        team_name = owner_id_to_team_dict[owner_id]
+
+        adds = t["adds"]
+        drops = t["drops"]
+
+        if adds:
+            for player_id in adds.keys():
+                added_player_names.append(players[player_id]["first_name"] + " " + players[player_id]["last_name"])
+
+        if drops:
+            for player_id in drops.keys():
+                dropped_player_names.append(players[player_id]["first_name"] + " " + players[player_id]["last_name"])
+
+        final_message_string = "**================================**\n"
+        final_message_string += "**Transaction **\n"
+        final_message_string += "**================================**\n"
+        final_message_string += f"**{team_name}**"
+        if t["type"] == "waiver":
+            bid = t["settings"]["waiver_bid"]
+            final_message_string += f" (*${bid}*)"
+
+        for added_player in added_player_names:
+            final_message_string += f"\n+ {added_player}"
+        for dropped_player in dropped_player_names:
+            final_message_string += f"\n- {dropped_player}"
+
+        bot.send_message(final_message_string)
+
 
 if __name__ == "__main__":
     """
@@ -507,17 +560,20 @@ if __name__ == "__main__":
     webhook = os.environ["DISCORD_WEBHOOK"]
     bot = Discord(webhook)
 
-    bot.send(get_welcome_string)  # inital message to send
+    players = Players()
+    players_dict = players.get_all_players()
 
-    schedule.every().thursday.at("16:00").do(bot.send, get_matchups_string,
+    bot.send(get_welcome_string)  # inital message to send
+    schedule.every(1).minute.do(process_transactions, league_id, players_dict, bot)
+    schedule.every().thursday.at("19:00").do(bot.send, get_matchups_string,
                                              league_id)  # Matchups Thursday at 4:00 pm PT
-    schedule.every().friday.at("09:00").do(bot.send, get_scores_string, league_id)  # Scores Friday at 9 am PT
-    schedule.every().sunday.at("16:00").do(bot.send, get_close_games_string, league_id,
+    schedule.every().friday.at("12:00").do(bot.send, get_scores_string, league_id)  # Scores Friday at 9 am PT
+    schedule.every().sunday.at("23:00").do(bot.send, get_close_games_string, league_id,
                                            int(close_num))  # Close games Sunday on 4:00 pm PT
-    schedule.every().monday.at("09:00").do(bot.send, get_scores_string, league_id)  # Scores Monday at 9 am PT
-    schedule.every().tuesday.at("08:00").do(bot.send, get_standings_string,
+    schedule.every().monday.at("12:00").do(bot.send, get_scores_string, league_id)  # Scores Monday at 9 am PT
+    schedule.every().tuesday.at("15:00").do(bot.send, get_standings_string,
                                             league_id)  # Standings Tuesday at 8:00 am PT
-    schedule.every().tuesday.at("08:01").do(bot.send, get_best_and_worst_string,
+    schedule.every().tuesday.at("15:01").do(bot.send, get_best_and_worst_string,
                                             league_id)  # Standings Tuesday at 8:01 am PT
 
     while True:
